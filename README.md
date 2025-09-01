@@ -71,3 +71,4 @@ dotnet test tests/RealEstate.Tests/RealEstate.Tests.csproj
 
 - Images are stored by URL (CDN/S3/Blob). Persisting binary content is out of scope.
 - Consider Azure Blob Storage or S3 and generate pre-signed URLs in production.
+- Url Swagger: https://localhost:58543/swagger/index.html
