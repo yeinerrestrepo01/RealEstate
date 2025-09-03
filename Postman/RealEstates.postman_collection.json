@@ -1,0 +1,166 @@
+{
+	"info": {
+		"_postman_id": "2ca03351-8a79-4cf1-a5f6-9cf96efd3451",
+		"name": "RealEstates",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "4137701"
+	},
+	"item": [
+		{
+			"name": "Owner",
+			"item": [
+				{
+					"name": "Create",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"name\": \"Nixon\",\r\n  \"address\": \"Cara 5 via al mar\",\r\n  \"photo\": \"https://picsum.photos/536/354\",\r\n  \"birthday\": \"2025-09-03T21:38:27.371Z\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "https://localhost:63533/api/Owners"
+					},
+					"response": []
+				},
+				{
+					"name": "get-all",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": {
+								"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsInVuaXF1ZV9uYW1lIjoiYWRtaW4iLCJqdGkiOiI3MTgzMjRmYS0zYTA1LTQ5MGMtYTA1YS0wOWIyZTZjY2QzMmQiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBZG1pbiIsIm5iZiI6MTc1NjkzMjQ4NSwiZXhwIjoxNzU2OTM2MDg1fQ.mgxtLPZ7_544mPhXQ6C5HcijLSvk56A7tccUWAEXqhc"
+							}
+						},
+						"method": "GET",
+						"header": [],
+						"url": "https://localhost:63533/api/Owners"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Propiedades",
+			"item": [
+				{
+					"name": "create-propiedad",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": {
+								"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsInVuaXF1ZV9uYW1lIjoiYWRtaW4iLCJqdGkiOiI3MTgzMjRmYS0zYTA1LTQ5MGMtYTA1YS0wOWIyZTZjY2QzMmQiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBZG1pbiIsIm5iZiI6MTc1NjkzMjQ4NSwiZXhwIjoxNzU2OTM2MDg1fQ.mgxtLPZ7_544mPhXQ6C5HcijLSvk56A7tccUWAEXqhc"
+							}
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"name\": \"\",\r\n  \"address\": \"\",\r\n  \"price\": 1000000000,\r\n  \"codeInternal\": \"\",\r\n  \"year\": 2100,\r\n  \"idOwner\": 2147483647\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "https://localhost:63533/api/Properties"
+					},
+					"response": []
+				},
+				{
+					"name": "add-imagen-propiedad",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": {
+								"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsInVuaXF1ZV9uYW1lIjoiYWRtaW4iLCJqdGkiOiI3MTgzMjRmYS0zYTA1LTQ5MGMtYTA1YS0wOWIyZTZjY2QzMmQiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBZG1pbiIsIm5iZiI6MTc1NjkzMjQ4NSwiZXhwIjoxNzU2OTM2MDg1fQ.mgxtLPZ7_544mPhXQ6C5HcijLSvk56A7tccUWAEXqhc"
+							}
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"file\": \"https://picsum.photos/536/354\",\r\n  \"enabled\": true\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "https://localhost:63533/api/Properties/1/images"
+					},
+					"response": []
+				},
+				{
+					"name": "getbyId",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": {
+								"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsInVuaXF1ZV9uYW1lIjoiYWRtaW4iLCJqdGkiOiI3MTgzMjRmYS0zYTA1LTQ5MGMtYTA1YS0wOWIyZTZjY2QzMmQiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBZG1pbiIsIm5iZiI6MTc1NjkzMjQ4NSwiZXhwIjoxNzU2OTM2MDg1fQ.mgxtLPZ7_544mPhXQ6C5HcijLSvk56A7tccUWAEXqhc"
+							}
+						},
+						"method": "GET",
+						"header": [],
+						"url": "https://localhost:63533/api/Properties/1"
+					},
+					"response": []
+				},
+				{
+					"name": "getByFilter",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": {
+								"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsInVuaXF1ZV9uYW1lIjoiYWRtaW4iLCJqdGkiOiI3MTgzMjRmYS0zYTA1LTQ5MGMtYTA1YS0wOWIyZTZjY2QzMmQiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBZG1pbiIsIm5iZiI6MTc1NjkzMjQ4NSwiZXhwIjoxNzU2OTM2MDg1fQ.mgxtLPZ7_544mPhXQ6C5HcijLSvk56A7tccUWAEXqhc"
+							}
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://localhost:63533/api/Properties?Name=Casa%20grande",
+							"protocol": "https",
+							"host": [
+								"localhost"
+							],
+							"port": "63533",
+							"path": [
+								"api",
+								"Properties"
+							],
+							"query": [
+								{
+									"key": "Name",
+									"value": "Casa%20grande"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "token",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"username\": \"admin\",\r\n  \"password\": \"Admin#2025!\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "https://localhost:63533/api/Auth/token"
+			},
+			"response": []
+		}
+	]
+}
