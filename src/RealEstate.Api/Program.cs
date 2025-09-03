@@ -1,10 +1,10 @@
+using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using RealEstate.Application.Services;
 using RealEstate.Infrastructure;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,11 +37,12 @@ builder.Services.AddSwaggerGen(c =>
         c.IncludeXmlComments(xml, includeControllerXmlComments: true);
 });
 
-var cs = builder.Configuration.GetConnectionString("SqlServer") 
+var cs = builder.Configuration.GetConnectionString("SqlServer")
          ?? "Server=localhost;Database=RealEstateDb;Trusted_Connection=True;TrustServerCertificate=True;";
 builder.Services.AddDbContext<RealEstateDbContext>(opt => opt.UseSqlServer(cs));
 
 builder.Services.AddScoped<IPropertyService, PropertyService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IOwnerService, OwnerService>();
 
 var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "THIS_IS_A_DEMO_SECRET_CHANGE_ME_1234567890";

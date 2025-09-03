@@ -96,37 +96,26 @@ namespace RealEstate.Infrastructure
             return trace;
         }
 
-        public async Task<Property?> GetAsync(int id, CancellationToken ct = default)
+        public async Task<PropertyDto?> GetAsync(int id, CancellationToken ct = default)
         {
             return await _db.Properties
                 .AsNoTracking()
-                .Include(p => p.Images)
-                .Include(p => p.Traces)
-                .Include(p => p.Owner)
-                .FirstOrDefaultAsync(p => p.IdProperty == id, ct);
+                .Where(p => p.IdProperty == id)
+                .Select(PropertyDto.Selector)
+                .FirstOrDefaultAsync(ct);
         }
 
-        public async Task<PagedResult<Property>> ListAsync(ListPropertiesQuery query, CancellationToken ct = default)
+        public async Task<PagedResult<PropertyListItemDto>> ListAsync(ListPropertiesQuery query, CancellationToken ct = default)
         {
-            var q = _db.Properties.AsNoTracking()
-                    .Include(p => p.Images)
-                    .Include(p => p.Owner)
-                    .AsQueryable();
+            var q = _db.Properties.AsNoTracking().AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(query.Name))
-                q = q.Where(p => p.Name.Contains(query.Name));
-            if (!string.IsNullOrWhiteSpace(query.Address))
-                q = q.Where(p => p.Address.Contains(query.Address));
-            if (query.MinPrice.HasValue)
-                q = q.Where(p => p.Price >= query.MinPrice.Value);
-            if (query.MaxPrice.HasValue)
-                q = q.Where(p => p.Price <= query.MaxPrice.Value);
-            if (query.MinYear.HasValue)
-                q = q.Where(p => p.Year >= query.MinYear.Value);
-            if (query.MaxYear.HasValue)
-                q = q.Where(p => p.Year <= query.MaxYear.Value);
-            if (query.IdOwner.HasValue)
-                q = q.Where(p => p.IdOwner == query.IdOwner.Value);
+            if (!string.IsNullOrWhiteSpace(query.Name)) q = q.Where(p => p.Name.Contains(query.Name));
+            if (!string.IsNullOrWhiteSpace(query.Address)) q = q.Where(p => p.Address.Contains(query.Address));
+            if (query.MinPrice.HasValue) q = q.Where(p => p.Price >= query.MinPrice.Value);
+            if (query.MaxPrice.HasValue) q = q.Where(p => p.Price <= query.MaxPrice.Value);
+            if (query.MinYear.HasValue) q = q.Where(p => p.Year >= query.MinYear.Value);
+            if (query.MaxYear.HasValue) q = q.Where(p => p.Year <= query.MaxYear.Value);
+            if (query.IdOwner.HasValue) q = q.Where(p => p.IdOwner == query.IdOwner.Value);
 
             q = (query.SortBy?.ToLowerInvariant()) switch
             {
@@ -137,10 +126,11 @@ namespace RealEstate.Infrastructure
             };
 
             var total = await q.CountAsync(ct);
+            var projected = q.Select(PropertyListItemDto.Selector);
             var skip = Math.Max(0, (query.Page - 1) * query.PageSize);
-            var items = await q.Skip(skip).Take(query.PageSize).ToListAsync(ct);
+            var items = await projected.Skip(skip).Take(query.PageSize).ToListAsync(ct);
 
-            return new PagedResult<Property>
+            return new PagedResult<PropertyListItemDto>
             {
                 Page = query.Page,
                 PageSize = query.PageSize,
@@ -149,13 +139,14 @@ namespace RealEstate.Infrastructure
             };
         }
 
-        public async Task<IReadOnlyList<PropertyTrace>> GetTracesAsync(int idProperty, CancellationToken ct = default)
+        public async Task<IReadOnlyList<PropertyTraceDto>> GetTracesAsync(int idProperty, CancellationToken ct = default)
         {
             var traces = await _db.PropertyTraces
-                                  .AsNoTracking()
-                                  .Where(t => t.IdProperty == idProperty)
-                                  .OrderByDescending(t => t.DateSale)
-                                  .ToListAsync(ct);
+                .AsNoTracking()
+                .Where(t => t.IdProperty == idProperty)
+                .OrderByDescending(t => t.DateSale)
+                .Select(PropertyTraceDto.Selector)
+                .ToListAsync(ct);
 
             return traces;
         }

@@ -10,11 +10,7 @@ namespace RealEstate.Api.Controllers
     public class PropertiesController : ControllerBase
     {
         private readonly IPropertyService _service;
-
-        public PropertiesController(IPropertyService service)
-        {
-            _service = service;
-        }
+        public PropertiesController(IPropertyService service) => _service = service;
 
         [HttpPost]
         [Authorize]
@@ -70,16 +66,15 @@ namespace RealEstate.Api.Controllers
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById([FromRoute] int id, CancellationToken ct)
         {
-            var prop = await _service.GetAsync(id, ct);
-            if (prop is null) return NotFound();
-            return Ok(prop);
+            var dto = await _service.GetAsync(id, ct);
+            if (dto is null) return NotFound();
+            return Ok(dto);
         }
 
         [HttpGet("{id:int}/traces")]
         public async Task<IActionResult> GetTraces([FromRoute] int id, CancellationToken ct)
         {
-            var traces = await _service.GetTracesAsync(id);
-            if (traces is null) return NotFound();
+            var traces = await _service.GetTracesAsync(id, ct);
             return Ok(traces);
         }
     }

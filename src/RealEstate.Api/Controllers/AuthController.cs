@@ -1,9 +1,10 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+using RealEstate.Application.Services;
 
 namespace RealEstate.Api.Controllers
 {
@@ -12,16 +13,25 @@ namespace RealEstate.Api.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IConfiguration _config;
-        public AuthController(IConfiguration config) => _config = config;
+        private readonly IAuthService _auth;
 
-        public record LoginRequest(string Username, string? Role);
+        public AuthController(IConfiguration config, IAuthService auth)
+        {
+            _config = config;
+            _auth = auth;
+        }
+
+        public record LoginRequest(string Username, string Password);
 
         [HttpPost("token")]
         [AllowAnonymous]
-        public IActionResult CreateToken([FromBody] LoginRequest req)
+        public async Task<IActionResult> CreateToken([FromBody] LoginRequest req, CancellationToken ct)
         {
-            if (string.IsNullOrWhiteSpace(req.Username))
-                return BadRequest("username requerido.");
+            if (string.IsNullOrWhiteSpace(req.Username) || string.IsNullOrWhiteSpace(req.Password))
+                return BadRequest("username y password son requeridos.");
+
+            var user = await _auth.ValidateAsync(req.Username, req.Password, ct);
+            if (user is null) return Unauthorized("Credenciales inválidas.");
 
             var secret = _config["Jwt:Secret"];
             if (string.IsNullOrWhiteSpace(secret))
@@ -32,12 +42,11 @@ namespace RealEstate.Api.Controllers
 
             var claims = new List<Claim>
             {
-                new(JwtRegisteredClaimNames.Sub, req.Username),
-                new(JwtRegisteredClaimNames.UniqueName, req.Username),
+                new(JwtRegisteredClaimNames.Sub, user.Username),
+                new(JwtRegisteredClaimNames.UniqueName, user.Username),
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new(ClaimTypes.Role, user.Role)
             };
-            if (!string.IsNullOrWhiteSpace(req.Role))
-                claims.Add(new Claim(ClaimTypes.Role, req.Role!));
 
             var expires = DateTime.UtcNow.AddHours(1);
             var token = new JwtSecurityToken(
