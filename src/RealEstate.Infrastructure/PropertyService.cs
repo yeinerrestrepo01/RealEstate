@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstate.Application.DTOs;
-using RealEstate.Domain.Entities;
 using RealEstate.Application.Services;
+using RealEstate.Domain.Entities;
 
 namespace RealEstate.Infrastructure
 {
@@ -9,142 +9,131 @@ namespace RealEstate.Infrastructure
     {
         private readonly RealEstateDbContext _db;
 
-        public PropertyService(RealEstateDbContext db)
-        {
-            _db = db;
-        }
+        public PropertyService(RealEstateDbContext db) => _db = db;
 
         public async Task<Property> CreateAsync(CreatePropertyRequest request, CancellationToken ct = default)
         {
-            if (await _db.Properties.AnyAsync(p => p.Code == request.Code, ct))
-                throw new InvalidOperationException($"Property with code '{request.Code}' already exists.");
+            if (await _db.Properties.AnyAsync(p => p.CodeInternal == request.CodeInternal, ct))
+                throw new InvalidOperationException($"Property with CodeInternal '{request.CodeInternal}' already exists.");
+
+            var ownerExists = await _db.Owners.AnyAsync(o => o.IdOwner == request.IdOwner, ct);
+            if (!ownerExists) throw new KeyNotFoundException("Owner not found");
 
             var entity = new Property
             {
-                Code = request.Code.Trim(),
-                Title = request.Title.Trim(),
-                Description = request.Description?.Trim(),
+                Name = request.Name.Trim(),
                 Address = request.Address.Trim(),
-                City = request.City.Trim(),
-                State = request.State.Trim().ToUpperInvariant(),
-                ZipCode = request.ZipCode.Trim(),
-                Bedrooms = request.Bedrooms,
-                Bathrooms = request.Bathrooms,
-                AreaSqFt = request.AreaSqFt,
-                YearBuilt = request.YearBuilt,
                 Price = request.Price,
-                Stories = request.Stories,
-                ParkingSpaces = request.ParkingSpaces,
-                HasHeating = request.HasHeating,
-                HasCooling = request.HasCooling,
-                LotSizeSqFt = request.LotSizeSqFt,
-                UpdatedAt = DateTime.UtcNow
+                CodeInternal = request.CodeInternal.Trim(),
+                Year = request.Year,
+                IdOwner = request.IdOwner
             };
-
             _db.Properties.Add(entity);
             await _db.SaveChangesAsync(ct);
             return entity;
         }
 
-        public async Task<Property> UpdateAsync(Guid id, UpdatePropertyRequest request, CancellationToken ct = default)
+        public async Task<Property> UpdateAsync(int id, UpdatePropertyRequest request, CancellationToken ct = default)
         {
-            var prop = await _db.Properties.FirstOrDefaultAsync(p => p.Id == id, ct)
+            var prop = await _db.Properties.FirstOrDefaultAsync(p => p.IdProperty == id, ct)
                 ?? throw new KeyNotFoundException("Property not found");
 
-            prop.Title = request.Title.Trim();
-            prop.Description = request.Description?.Trim();
-            prop.Address = request.Address.Trim();
-            prop.City = request.City.Trim();
-            prop.State = request.State.Trim().ToUpperInvariant();
-            prop.ZipCode = request.ZipCode.Trim();
-            prop.Bedrooms = request.Bedrooms;
-            prop.Bathrooms = request.Bathrooms;
-            prop.AreaSqFt = request.AreaSqFt;
-            prop.YearBuilt = request.YearBuilt;
-            prop.Status = request.Status;
-            prop.Stories = request.Stories;
-            prop.ParkingSpaces = request.ParkingSpaces;
-            prop.HasHeating = request.HasHeating;
-            prop.HasCooling = request.HasCooling;
-            prop.LotSizeSqFt = request.LotSizeSqFt;
-            prop.UpdatedAt = DateTime.UtcNow;
-
-            await _db.SaveChangesAsync(ct);
-            return prop;
-        }
-
-        public async Task<Property> ChangePriceAsync(Guid id, decimal newPrice, CancellationToken ct = default)
-        {
-            var prop = await _db.Properties.FirstOrDefaultAsync(p => p.Id == id, ct)
-                ?? throw new KeyNotFoundException("Property not found");
-
-            prop.Price = newPrice;
-            prop.UpdatedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync(ct);
-            return prop;
-        }
-
-        public async Task<PropertyImage> AddImageAsync(Guid propertyId, string url, bool isCover, CancellationToken ct = default)
-        {
-            var prop = await _db.Properties.FirstOrDefaultAsync(p => p.Id == propertyId, ct)
-                ?? throw new KeyNotFoundException("Property not found");
-
-            if (isCover)
+            if (!string.Equals(prop.CodeInternal, request.CodeInternal, StringComparison.OrdinalIgnoreCase) &&
+                await _db.Properties.AnyAsync(p => p.CodeInternal == request.CodeInternal && p.IdProperty != id, ct))
             {
-                // ensure single cover image
-                var covers = _db.PropertyImages.Where(i => i.PropertyId == propertyId && i.IsCover);
-                await covers.ForEachAsync(i => i.IsCover = false, ct);
+                throw new InvalidOperationException($"Property with CodeInternal '{request.CodeInternal}' already exists.");
             }
 
-            var img = new PropertyImage
-            {
-                PropertyId = propertyId,
-                Url = url.Trim(),
-                IsCover = isCover
-            };
+            if (!await _db.Owners.AnyAsync(o => o.IdOwner == request.IdOwner, ct))
+                throw new KeyNotFoundException("Owner not found");
 
+            prop.Name = request.Name.Trim();
+            prop.Address = request.Address.Trim();
+            prop.Price = request.Price;
+            prop.CodeInternal = request.CodeInternal.Trim();
+            prop.Year = request.Year;
+            prop.IdOwner = request.IdOwner;
+
+            await _db.SaveChangesAsync(ct);
+            return prop;
+        }
+
+        public async Task<Property> ChangePriceAsync(int id, decimal newPrice, CancellationToken ct = default)
+        {
+            var prop = await _db.Properties.FirstOrDefaultAsync(p => p.IdProperty == id, ct)
+                ?? throw new KeyNotFoundException("Property not found");
+            prop.Price = newPrice;
+            await _db.SaveChangesAsync(ct);
+            return prop;
+        }
+
+        public async Task<PropertyImage> AddImageAsync(int idProperty, string file, bool enabled, CancellationToken ct = default)
+        {
+            var exists = await _db.Properties.AnyAsync(p => p.IdProperty == idProperty, ct);
+            if (!exists) throw new KeyNotFoundException("Property not found");
+
+            var img = new PropertyImage { IdProperty = idProperty, Files = file.Trim(), Enabled = enabled };
             _db.PropertyImages.Add(img);
             await _db.SaveChangesAsync(ct);
             return img;
         }
 
-        public async Task<Property?> GetAsync(Guid id, CancellationToken ct = default)
+        public async Task<PropertyTrace> AddTraceAsync(int idProperty, AddTraceRequest req, CancellationToken ct = default)
+        {
+            var exists = await _db.Properties.AnyAsync(p => p.IdProperty == idProperty, ct);
+            if (!exists) throw new KeyNotFoundException("Property not found");
+
+            var trace = new PropertyTrace
+            {
+                IdProperty = idProperty,
+                DateSale = req.DateSale,
+                Name = req.Name.Trim(),
+                Value = req.Value,
+                Tax = req.Tax
+            };
+            _db.PropertyTraces.Add(trace);
+            await _db.SaveChangesAsync(ct);
+            return trace;
+        }
+
+        public async Task<Property?> GetAsync(int id, CancellationToken ct = default)
         {
             return await _db.Properties
                 .AsNoTracking()
                 .Include(p => p.Images)
-                .FirstOrDefaultAsync(p => p.Id == id, ct);
+                .Include(p => p.Traces)
+                .Include(p => p.Owner)
+                .FirstOrDefaultAsync(p => p.IdProperty == id, ct);
         }
 
         public async Task<PagedResult<Property>> ListAsync(ListPropertiesQuery query, CancellationToken ct = default)
         {
-            var q = _db.Properties.AsNoTracking().Include(p => p.Images).AsQueryable();
+            var q = _db.Properties.AsNoTracking()
+                    .Include(p => p.Images)
+                    .Include(p => p.Owner)
+                    .AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(query.City))
-                q = q.Where(p => p.City == query.City);
-            if (!string.IsNullOrWhiteSpace(query.State))
-                q = q.Where(p => p.State == query.State);
-            if (query.MinBedrooms.HasValue)
-                q = q.Where(p => p.Bedrooms >= query.MinBedrooms.Value);
-            if (query.MinBathrooms.HasValue)
-                q = q.Where(p => p.Bathrooms >= query.MinBathrooms.Value);
-            if (query.MinArea.HasValue)
-                q = q.Where(p => p.AreaSqFt >= query.MinArea.Value);
-            if (query.MaxArea.HasValue)
-                q = q.Where(p => p.AreaSqFt <= query.MaxArea.Value);
+            if (!string.IsNullOrWhiteSpace(query.Name))
+                q = q.Where(p => p.Name.Contains(query.Name));
+            if (!string.IsNullOrWhiteSpace(query.Address))
+                q = q.Where(p => p.Address.Contains(query.Address));
             if (query.MinPrice.HasValue)
                 q = q.Where(p => p.Price >= query.MinPrice.Value);
             if (query.MaxPrice.HasValue)
                 q = q.Where(p => p.Price <= query.MaxPrice.Value);
-            if (query.Status.HasValue)
-                q = q.Where(p => p.Status == query.Status.Value);
+            if (query.MinYear.HasValue)
+                q = q.Where(p => p.Year >= query.MinYear.Value);
+            if (query.MaxYear.HasValue)
+                q = q.Where(p => p.Year <= query.MaxYear.Value);
+            if (query.IdOwner.HasValue)
+                q = q.Where(p => p.IdOwner == query.IdOwner.Value);
 
             q = (query.SortBy?.ToLowerInvariant()) switch
             {
-                "price" => (query.Desc ? q.OrderByDescending(p => p.Price) : q.OrderBy(p => p.Price)),
-                "area" => (query.Desc ? q.OrderByDescending(p => p.AreaSqFt) : q.OrderBy(p => p.AreaSqFt)),
-                "createdat" => (query.Desc ? q.OrderByDescending(p => p.CreatedAt) : q.OrderBy(p => p.CreatedAt)),
-                _ => q.OrderBy(p => p.Title)
+                "price" => query.Desc ? q.OrderByDescending(p => p.Price) : q.OrderBy(p => p.Price),
+                "year" => query.Desc ? q.OrderByDescending(p => p.Year) : q.OrderBy(p => p.Year),
+                "name" => query.Desc ? q.OrderByDescending(p => p.Name) : q.OrderBy(p => p.Name),
+                _ => q.OrderBy(p => p.IdProperty)
             };
 
             var total = await q.CountAsync(ct);
@@ -158,6 +147,17 @@ namespace RealEstate.Infrastructure
                 Total = total,
                 Items = items
             };
+        }
+
+        public async Task<IReadOnlyList<PropertyTrace>> GetTracesAsync(int idProperty, CancellationToken ct = default)
+        {
+            var traces = await _db.PropertyTraces
+                                  .AsNoTracking()
+                                  .Where(t => t.IdProperty == idProperty)
+                                  .OrderByDescending(t => t.DateSale)
+                                  .ToListAsync(ct);
+
+            return traces;
         }
     }
 }

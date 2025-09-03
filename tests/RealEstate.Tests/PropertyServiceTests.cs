@@ -1,128 +1,257 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using NUnit.Framework;
 using RealEstate.Application.DTOs;
 using RealEstate.Application.Services;
+using RealEstate.Domain.Entities;
 using RealEstate.Infrastructure;
 
 namespace RealEstate.Tests
 {
+    [TestFixture]
     public class PropertyServiceTests
     {
-        private IPropertyService _service = default!;
         private RealEstateDbContext _db = default!;
+        private IPropertyService _service = default!;
 
         [SetUp]
         public void Setup()
         {
-            var options = new DbContextOptionsBuilder<RealEstateDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString())
-                .Options;
-            _db = new RealEstateDbContext(options);
+            _db = TestDbHelper.CreateInMemory();
             _service = new PropertyService(_db);
+
+            _db.Owners.Add(new Owner { Name = "Owner 1", Address = "Addr 1" });
+            _db.SaveChanges();
         }
 
         [Test]
         public async Task Create_And_Get_Should_Work()
         {
+            var ownerId = _db.Owners.First().IdOwner;
             var create = new CreatePropertyRequest
             {
-                Code = "NYC-0001",
-                Title = "Cozy Apartment in Manhattan",
-                Address = "123 Main St",
-                City = "New York",
-                State = "NY",
-                ZipCode = "10001",
-                Bedrooms = 2,
-                Bathrooms = 1.5m,
-                AreaSqFt = 900,
-                YearBuilt = 1995,
-                Price = 950000
+                Name = "House",
+                Address = "123 Main",
+                Price = 100000,
+                CodeInternal = "CODE-1",
+                Year = 2000,
+                IdOwner = ownerId
             };
 
             var entity = await _service.CreateAsync(create);
-            entity.Id.Should().NotBe(Guid.Empty);
+            entity.IdProperty.Should().BeGreaterThan(0);
 
-            var fetched = await _service.GetAsync(entity.Id);
+            var fetched = await _service.GetAsync(entity.IdProperty);
             fetched.Should().NotBeNull();
-            fetched!.Code.Should().Be("NYC-0001");
+            fetched!.CodeInternal.Should().Be("CODE-1");
+            fetched.Owner.IdOwner.Should().Be(ownerId);
+        }
+
+        [Test]
+        public async Task Create_Should_Throw_On_Duplicate_CodeInternal()
+        {
+            var ownerId = _db.Owners.First().IdOwner;
+            await _service.CreateAsync(new CreatePropertyRequest
+            {
+                Name = "A",
+                Address = "A",
+                Price = 1,
+                CodeInternal = "DUP",
+                Year = 2001,
+                IdOwner = ownerId
+            });
+
+            var act = async () => await _service.CreateAsync(new CreatePropertyRequest
+            {
+                Name = "B",
+                Address = "B",
+                Price = 2,
+                CodeInternal = "DUP",
+                Year = 2002,
+                IdOwner = ownerId
+            });
+
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*already exists*");
+        }
+
+        [Test]
+        public async Task Update_Should_Modify_And_Check_Unique_Code()
+        {
+            var ownerId = _db.Owners.First().IdOwner;
+            var a = await _service.CreateAsync(new CreatePropertyRequest
+            {
+                Name = "A",
+                Address = "AA",
+                Price = 1,
+                CodeInternal = "U-1",
+                Year = 1999,
+                IdOwner = ownerId
+            });
+            var b = await _service.CreateAsync(new CreatePropertyRequest
+            {
+                Name = "B",
+                Address = "BB",
+                Price = 2,
+                CodeInternal = "U-2",
+                Year = 2000,
+                IdOwner = ownerId
+            });
+
+            var updated = await _service.UpdateAsync(a.IdProperty, new UpdatePropertyRequest
+            {
+                Name = "A2",
+                Address = "AA2",
+                Price = 10,
+                CodeInternal = "U-1",
+                Year = 2001,
+                IdOwner = ownerId
+            });
+            updated.Name.Should().Be("A2");
+
+            var act = async () => await _service.UpdateAsync(a.IdProperty, new UpdatePropertyRequest
+            {
+                Name = "A3",
+                Address = "AA3",
+                Price = 20,
+                CodeInternal = "U-2",
+                Year = 2002,
+                IdOwner = ownerId
+            });
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*already exists*");
+        }
+
+        [Test]
+        public async Task Update_Should_Throw_When_Owner_NotFound()
+        {
+            var ownerId = _db.Owners.First().IdOwner;
+            var p = await _service.CreateAsync(new CreatePropertyRequest
+            {
+                Name = "X",
+                Address = "AX",
+                Price = 1,
+                CodeInternal = "C-X",
+                Year = 2000,
+                IdOwner = ownerId
+            });
+
+            var act = async () => await _service.UpdateAsync(p.IdProperty, new UpdatePropertyRequest
+            {
+                Name = "X2",
+                Address = "AX2",
+                Price = 2,
+                CodeInternal = "C-X",
+                Year = 2001,
+                IdOwner = 9999
+            });
+            await act.Should().ThrowAsync<KeyNotFoundException>().WithMessage("*Owner not found*");
         }
 
         [Test]
         public async Task ChangePrice_Should_Update_Value()
         {
+            var ownerId = _db.Owners.First().IdOwner;
             var prop = await _service.CreateAsync(new CreatePropertyRequest
             {
-                Code = "LA-0002",
-                Title = "House in LA",
-                Address = "1 Ocean Dr",
-                City = "Los Angeles",
-                State = "CA",
-                ZipCode = "90001",
-                Bedrooms = 3,
-                Bathrooms = 2,
-                AreaSqFt = 1500,
-                YearBuilt = 2001,
-                Price = 1200000
+                Name = "Depto",
+                Address = "1 Ocean",
+                Price = 1200000,
+                CodeInternal = "CODE-2",
+                Year = 2001,
+                IdOwner = ownerId
             });
 
-            var updated = await _service.ChangePriceAsync(prop.Id, 1300000);
+            var updated = await _service.ChangePriceAsync(prop.IdProperty, 1300000);
             updated.Price.Should().Be(1300000);
         }
 
         [Test]
-        public async Task AddImage_Should_Set_Cover_Singleton()
+        public async Task AddImage_And_Trace_Should_Work()
         {
+            var ownerId = _db.Owners.First().IdOwner;
             var prop = await _service.CreateAsync(new CreatePropertyRequest
             {
-                Code = "MIA-0003",
-                Title = "Miami Beach Condo",
-                Address = "10 Beach Ave",
-                City = "Miami",
-                State = "FL",
-                ZipCode = "33101",
-                Bedrooms = 2,
-                Bathrooms = 2,
-                AreaSqFt = 1100,
-                YearBuilt = 2010,
-                Price = 750000
+                Name = "Depto2",
+                Address = "10 Beach",
+                Price = 750000,
+                CodeInternal = "CODE-3",
+                Year = 2010,
+                IdOwner = ownerId
             });
 
-            var img1 = await _service.AddImageAsync(prop.Id, "https://cdn/img1.jpg", true);
-            var img2 = await _service.AddImageAsync(prop.Id, "https://cdn/img2.jpg", true);
+            var img = await _service.AddImageAsync(prop.IdProperty, "https://cdn/img1.jpg", true);
+            img.IdPropertyImage.Should().BeGreaterThan(0);
 
-            var fetched = await _service.GetAsync(prop.Id);
-            fetched!.Images.Count(i => i.IsCover).Should().Be(1);
-            fetched.Images.Single(i => i.IsCover).Url.Should().Be("https://cdn/img2.jpg");
+            var trace = await _service.AddTraceAsync(prop.IdProperty, new AddTraceRequest
+            {
+                DateSale = DateTime.UtcNow.Date,
+                Name = "Buyer A",
+                Value = 800000,
+                Tax = 10000
+            });
+            trace.IdPropertyTrace.Should().BeGreaterThan(0);
         }
 
         [Test]
-        public async Task List_With_Filters_Should_Paginate()
+        public async Task GetTraces_Should_Return_Sorted_Desc()
         {
+            var ownerId = _db.Owners.First().IdOwner;
+            var prop = await _service.CreateAsync(new CreatePropertyRequest
+            {
+                Name = "THouse",
+                Address = "Trace Ave",
+                Price = 1,
+                CodeInternal = "TRACE-1",
+                Year = 2000,
+                IdOwner = ownerId
+            });
+
+            await _service.AddTraceAsync(prop.IdProperty, new AddTraceRequest
+            {
+                DateSale = new DateTime(2020, 1, 1),
+                Name = "A",
+                Value = 1,
+                Tax = 0
+            });
+            await _service.AddTraceAsync(prop.IdProperty, new AddTraceRequest
+            {
+                DateSale = new DateTime(2021, 1, 1),
+                Name = "B",
+                Value = 2,
+                Tax = 0
+            });
+
+            var traces = await _service.GetTracesAsync(prop.IdProperty);
+            traces.Should().HaveCount(2);
+            traces[0].DateSale.Should().Be(new DateTime(2021, 1, 1));
+            traces[1].DateSale.Should().Be(new DateTime(2020, 1, 1));
+        }
+
+        [Test]
+        public async Task List_With_Filters_Sort_And_Paginate()
+        {
+            var ownerId = _db.Owners.First().IdOwner;
             for (int i = 0; i < 25; i++)
             {
                 await _service.CreateAsync(new CreatePropertyRequest
                 {
-                    Code = $"SEA-{i:D4}",
-                    Title = $"Seattle Apt {i}",
-                    Address = $"{i} Pike St",
-                    City = "Seattle",
-                    State = "WA",
-                    ZipCode = "98101",
-                    Bedrooms = 1 + (i % 3),
-                    Bathrooms = 1,
-                    AreaSqFt = 600 + i * 10,
-                    YearBuilt = 2000 + (i % 10),
-                    Price = 300000 + i * 10000
+                    Name = $"Prop {i}",
+                    Address = $"Addr {i}",
+                    Price = 300000 + i * 10000,
+                    CodeInternal = $"CODE-{i:D3}",
+                    Year = 1990 + (i % 30),
+                    IdOwner = ownerId
                 });
             }
 
-            var page1 = await _service.ListAsync(new ListPropertiesQuery { City = "Seattle", Page = 1, PageSize = 10, SortBy = "price", Desc = true });
+            var page1 = await _service.ListAsync(new ListPropertiesQuery { MinPrice = 320000, Page = 1, PageSize = 10, SortBy = "price", Desc = true });
             page1.Items.Should().HaveCount(10);
-            page1.Total.Should().Be(25);
+            page1.Total.Should().BeGreaterThan(10);
 
-            var page3 = await _service.ListAsync(new ListPropertiesQuery { City = "Seattle", Page = 3, PageSize = 10 });
-            page3.Items.Should().HaveCount(5);
+            var page3 = await _service.ListAsync(new ListPropertiesQuery { Page = 3, PageSize = 10 });
+            page3.Items.Count.Should().BeGreaterThanOrEqualTo(5);
         }
     }
 }

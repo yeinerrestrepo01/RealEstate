@@ -1,37 +1,18 @@
-using RealEstate.Domain.Enums;
-
 namespace RealEstate.Domain.Entities
 {
     public class Property
     {
-        public Guid Id { get; set; } = Guid.NewGuid();
-        public string Code { get; set; } = default!; // Unique code per property (e.g., MLS-like)
-        public string Title { get; set; } = default!;
-        public string? Description { get; set; }
+        public int IdProperty { get; set; }
+        public string Name { get; set; } = default!;
         public string Address { get; set; } = default!;
-        public string City { get; set; } = default!;
-        public string State { get; set; } = default!;
-        public string ZipCode { get; set; } = default!;
-        public string Country { get; set; } = "USA";
-
-        public int Bedrooms { get; set; }
-        public decimal Bathrooms { get; set; } // allow half baths
-        public int AreaSqFt { get; set; }
-        public int YearBuilt { get; set; }
-
         public decimal Price { get; set; }
-        public PropertyStatus Status { get; set; } = PropertyStatus.Draft;
+        public string CodeInternal { get; set; } = default!;
+        public int Year { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public int IdOwner { get; set; }
+        public Owner Owner { get; set; } = default!;
 
         public ICollection<PropertyImage> Images { get; set; } = new List<PropertyImage>();
-
-        // Building details (owned-like data)
-        public int Stories { get; set; }
-        public int ParkingSpaces { get; set; }
-        public bool HasHeating { get; set; }
-        public bool HasCooling { get; set; }
-        public decimal LotSizeSqFt { get; set; }
+        public ICollection<PropertyTrace> Traces { get; set; } = new List<PropertyTrace>();
     }
 }

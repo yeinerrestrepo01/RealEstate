@@ -5,44 +5,77 @@ namespace RealEstate.Infrastructure
 {
     public class RealEstateDbContext : DbContext
     {
-        public RealEstateDbContext(DbContextOptions<RealEstateDbContext> options) : base(options) { }
+        public RealEstateDbContext(DbContextOptions<RealEstateDbContext> options) : base(options)
+        {
+        }
 
+        public DbSet<Owner> Owners => Set<Owner>();
         public DbSet<Property> Properties => Set<Property>();
         public DbSet<PropertyImage> PropertyImages => Set<PropertyImage>();
+        public DbSet<PropertyTrace> PropertyTraces => Set<PropertyTrace>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<Owner>(e =>
+            {
+                e.ToTable("Owner");
+                e.HasKey(x => x.IdOwner);
+                e.Property(x => x.IdOwner).ValueGeneratedOnAdd();
+                e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+                e.Property(x => x.Address).HasMaxLength(250).IsRequired();
+                e.Property(x => x.Photo).HasMaxLength(2048);
+            });
+
             modelBuilder.Entity<Property>(e =>
             {
-                e.ToTable("Properties");
-                e.HasKey(p => p.Id);
-                e.HasIndex(p => p.Code).IsUnique();
-                e.Property(p => p.Code).HasMaxLength(32).IsRequired();
-                e.Property(p => p.Title).HasMaxLength(160).IsRequired();
-                e.Property(p => p.Description).HasMaxLength(4000);
-                e.Property(p => p.Address).HasMaxLength(200).IsRequired();
-                e.Property(p => p.City).HasMaxLength(100).IsRequired();
-                e.Property(p => p.State).HasMaxLength(2).IsRequired(); // US state code
-                e.Property(p => p.ZipCode).HasMaxLength(10).IsRequired();
-                e.Property(p => p.Country).HasMaxLength(3).HasDefaultValue("USA");
-                e.Property(p => p.Price).HasColumnType("decimal(18,2)");
-                e.Property(p => p.Bathrooms).HasColumnType("decimal(5,2)");
-                e.Property(p => p.LotSizeSqFt).HasColumnType("decimal(18,2)");
-                e.Property(p => p.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
-                e.Property(p => p.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
+                e.ToTable("Property");
+                e.HasKey(x => x.IdProperty);
+                e.Property(x => x.IdProperty).ValueGeneratedOnAdd();
+                e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+                e.Property(x => x.Address).HasMaxLength(250).IsRequired();
+                e.Property(x => x.Price).HasColumnType("decimal(18,2)");
+                e.Property(x => x.CodeInternal).HasMaxLength(64).IsRequired();
+                e.HasIndex(x => x.CodeInternal).IsUnique();
+                e.Property(x => x.Year).IsRequired();
 
-                e.HasMany(p => p.Images)
-                 .WithOne(i => i.Property!)
-                 .HasForeignKey(i => i.PropertyId)
-                 .OnDelete(DeleteBehavior.Cascade);
+                e.HasOne(x => x.Owner)
+                 .WithMany(o => o.Properties)
+                 .HasForeignKey(x => x.IdOwner)
+                 .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<PropertyImage>(e =>
             {
-                e.ToTable("PropertyImages");
-                e.HasKey(i => i.Id);
-                e.Property(i => i.Url).HasMaxLength(2048).IsRequired();
-                e.HasIndex(i => new { i.PropertyId, i.IsCover });
+                e.ToTable("PropertyImage");
+                e.HasKey(x => x.IdPropertyImage);
+                e.Property(x => x.IdPropertyImage).ValueGeneratedOnAdd();
+                e.Property(x => x.Files).HasMaxLength(2048).IsRequired();
+                e.Property(x => x.Enabled).HasDefaultValue(true);
+
+                e.HasOne(x => x.Property)
+                 .WithMany(p => p.Images)
+                 .HasForeignKey(x => x.IdProperty)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasIndex(x => new { x.IdProperty, x.Enabled });
+            });
+
+            modelBuilder.Entity<PropertyTrace>(e =>
+            {
+                e.ToTable("PropertyTrace");
+                e.HasKey(x => x.IdPropertyTrace);
+                e.Property(x => x.IdPropertyTrace).ValueGeneratedOnAdd();
+                e.Property(x => x.DateSale).IsRequired();
+                e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+                e.Property(x => x.Value).HasColumnType("decimal(18,2)");
+                e.Property(x => x.Tax).HasColumnType("decimal(18,2)");
+
+                e.HasOne(x => x.Property)
+                 .WithMany(p => p.Traces)
+                 .HasForeignKey(x => x.IdProperty)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasIndex(x => new { x.IdProperty, x.DateSale });
             });
         }
     }
