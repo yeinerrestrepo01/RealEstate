@@ -34,6 +34,11 @@ This solution implements the required services:
    dotnet run --project src/RealEstate.Api/RealEstate.Api.csproj
    ```
 5. Open Swagger: https://localhost:63533/swagger/index.html
+6. URL TOKEN: https://localhost:63533/api/Auth/token
+   Example get token, request: {
+  "username": "admin",
+  "password": "Admin#2025!"
+}
 
 ## Endpoints
 
