@@ -32,7 +32,7 @@ CREATE TABLE dbo.PropertyImage (
   IdPropertyImage INT IDENTITY(1,1) PRIMARY KEY,
   IdProperty INT NOT NULL
     CONSTRAINT FK_PropertyImage_Property REFERENCES dbo.Property(IdProperty) ON DELETE CASCADE,
-  File NVARCHAR(2048) NOT NULL,
+  Files NVARCHAR(2048) NOT NULL,
   Enabled BIT NOT NULL DEFAULT(1)
 );
 CREATE INDEX IX_PropertyImage_Property_Enabled ON dbo.PropertyImage(IdProperty, Enabled);
